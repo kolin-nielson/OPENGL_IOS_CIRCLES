@@ -1,16 +1,16 @@
 import { Circle } from "./Circle.js";
 import { collideParticles } from "./collisions.js";
 
-// Get canvas and WebGL context
+// Select the canvas and WebGL context
 const canvas = document.getElementById("glcanvas");
-const gl = canvas.getContext("webgl");
+let gl = canvas.getContext("webgl", { preserveDrawingBuffer: true }); // Preserve buffer for PWAs
 
 if (!gl) {
     alert("Your browser does not support WebGL");
     throw new Error("WebGL not supported");
 }
 
-// Set up canvas for high-resolution screens
+// Function to reset and resize canvas properly
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(canvas.clientWidth * dpr);
@@ -18,9 +18,18 @@ function resizeCanvas() {
     gl.viewport(0, 0, canvas.width, canvas.height);
 }
 
-// Ensure canvas resizes on window resize
+// Resize canvas dynamically
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
+
+// **Force WebGL Context Reset on iOS PWA**
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        console.log("Resetting WebGL context...");
+        gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
+        resizeCanvas();
+    }
+});
 
 // Vertex Shader
 const vertexShaderText = `
