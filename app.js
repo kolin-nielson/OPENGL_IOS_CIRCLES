@@ -3,33 +3,51 @@ import { collideParticles } from "./collisions.js";
 
 // Select the canvas and WebGL context
 const canvas = document.getElementById("glcanvas");
-let gl = canvas.getContext("webgl", { preserveDrawingBuffer: true }); // Preserve buffer for PWAs
+let gl;
 
-if (!gl) {
-    alert("Your browser does not support WebGL");
-    throw new Error("WebGL not supported");
+// Function to initialize WebGL
+function initWebGL() {
+    gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
+    if (!gl) {
+        alert("Your browser does not support WebGL");
+        throw new Error("WebGL not supported");
+    }
+
+    // Initialize shaders and buffers
+    shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
+    circleBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
 }
 
 // Function to reset and resize canvas properly
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(canvas.clientWidth * dpr);
-    canvas.height = Math.floor(canvas.clientHeight * dpr);
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
     gl.viewport(0, 0, canvas.width, canvas.height);
 }
 
 // Resize canvas dynamically
 window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
 
-// **Force WebGL Context Reset on iOS PWA**
-document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-        console.log("Resetting WebGL context...");
-        gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
-        resizeCanvas();
-    }
+// Handle WebGL context loss and restoration
+canvas.addEventListener("webglcontextlost", (event) => {
+    event.preventDefault();
+    console.log("WebGL context lost");
 });
+
+canvas.addEventListener("webglcontextrestored", () => {
+    console.log("WebGL context restored");
+    initWebGL(); // Reinitialize WebGL
+    resizeCanvas(); // Resize the canvas
+    render(); // Restart the render loop
+});
+
+// Initialize WebGL and resize canvas
+initWebGL();
+resizeCanvas();
 
 // Vertex Shader
 const vertexShaderText = `
@@ -52,9 +70,9 @@ const fragmentShaderText = `
 `;
 
 // Initialize shaders
-const shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
-const circleVertices = createCircleVertices(256);
-const circleBuffer = gl.createBuffer();
+let shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
+const circleVertices = createCircleVertices(64);
+let circleBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
 

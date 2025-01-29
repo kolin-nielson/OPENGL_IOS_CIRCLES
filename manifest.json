@@ -2,9 +2,9 @@
     "name": "Bouncing Circles",
     "short_name": "Circles",
     "description": "Circles bounce around",
-    "start_url": "./",
-    "display": "fullscreen",
-    "orientation": "default",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "orientation": "portrait",
     "icons": [
         {
             "src": "icons/android-chrome-192x192.png",
@@ -15,6 +15,12 @@
         {
             "src": "icons/android-chrome-512x512.png",
             "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/apple-touch-icon.png",
+            "sizes": "180x180",
             "type": "image/png",
             "purpose": "any"
         }
