@@ -53,7 +53,7 @@ const fragmentShaderText = `
 
 // Initialize shaders
 const shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
-const circleVertices = createCircleVertices(64);
+const circleVertices = createCircleVertices(256);
 const circleBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);

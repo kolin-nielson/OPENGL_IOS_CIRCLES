@@ -4,7 +4,7 @@
     "description": "Circles bounce around",
     "start_url": "./",
     "display": "fullscreen",
-    "orientation": "portrait",
+    "orientation": "default",
     "icons": [
         {
             "src": "icons/android-chrome-192x192.png",
