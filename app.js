@@ -1,14 +1,33 @@
 import { Circle } from "./Circle.js";
 import { collideParticles } from "./collisions.js";
 
+// Get canvas and WebGL context
+const canvas = document.getElementById("glcanvas");
+const gl = canvas.getContext("webgl");
+
+if (!gl) {
+    alert("Your browser does not support WebGL");
+    throw new Error("WebGL not supported");
+}
+
+// Set up canvas for high-resolution screens
+function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(canvas.clientWidth * dpr);
+    canvas.height = Math.floor(canvas.clientHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+// Ensure canvas resizes on window resize
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
 // Vertex Shader
 const vertexShaderText = `
     precision mediump float;
-
     attribute vec2 vertPosition;
     uniform vec2 uTranslation;
     uniform float uScale;
-
     void main() {
         gl_Position = vec4(vertPosition * uScale + uTranslation, 0.0, 1.0);
     }
@@ -17,81 +36,128 @@ const vertexShaderText = `
 // Fragment Shader
 const fragmentShaderText = `
     precision mediump float;
-
     uniform vec4 uColor;
-
     void main() {
         gl_FragColor = uColor;
     }
 `;
 
-main();
+// Initialize shaders
+const shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
+const circleVertices = createCircleVertices(64);
+const circleBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
 
-async function main() {
-    const canvas = document.getElementById("glcanvas");
-    const gl = canvas.getContext("webgl");
+// Global variables
+const circles = [];
+const numCircles = 50;
+let gravity = [0, -1]; // Default gravity
 
-    if (!gl) {
-        alert("Your browser does not support WebGL");
-        return;
-    }
+// Initialize circles
+for (let i = 0; i < numCircles; i++) {
+    const radius = Math.random() * 0.05 + 0.02;
+    const x = Math.random() * 2 - 1;
+    const y = Math.random() * 2 - 1;
+    const velocityX = Math.random() * 0.5 - 0.25;
+    const velocityY = Math.random() * 0.5 - 0.25;
+    const color = [Math.random(), Math.random(), Math.random(), 1.0];
+    circles.push(new Circle(x, y, radius, velocityX, velocityY, color));
+}
 
-    const shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
-    const circleVertices = createCircleVertices(64);
-
-    const circleBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
-
-    const circles = [];
-    const numCircles = 50;
-
-    for (let i = 0; i < numCircles; i++) {
-        const radius = Math.random() * 0.05 + 0.02;
-        const x = Math.random() * 2 - 1;
-        const y = Math.random() * 2 - 1;
-        const velocityX = Math.random() * 0.5 - 0.25;
-        const velocityY = Math.random() * 0.5 - 0.25;
-        const color = [Math.random(), Math.random(), Math.random(), 1.0];
-        circles.push(new Circle(x, y, radius, velocityX, velocityY, color));
-    }
-
-    const bounds = { left: -1, right: 1, top: 1, bottom: -1 };
-
-    // Add event listener for clicks
-    canvas.addEventListener("click", (event) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = ((event.clientX - rect.left) / canvas.width) * 2 - 1;
-        const mouseY = 1 - ((event.clientY - rect.top) / canvas.height) * 2;
-
-        // Trigger explosion
-        triggerExplosion(mouseX, mouseY, circles);
-    });
-
-    let previousTime = 0;
-
-    function render(currentTime) {
-        currentTime *= 0.001; // Convert to seconds
-        const deltaTime = currentTime - previousTime;
-        previousTime = currentTime;
-
-        gl.clearColor(0.2, 0.2, 0.2, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        for (let i = 0; i < circles.length; i++) {
-            for (let j = i + 1; j < circles.length; j++) {
-                collideParticles(circles[i], circles[j], 0.9); // Collision friction = 0.9
+// ** 📲 Mobile Accelerometer Gravity **
+async function enableMotionSensor() {
+    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+        try {
+            const permission = await DeviceMotionEvent.requestPermission();
+            if (permission === "granted") {
+                window.addEventListener("deviceorientation", handleOrientation);
             }
-            circles[i].update(deltaTime, bounds);
-            circles[i].draw(gl, shaderProgram, circleBuffer);
+        } catch (error) {
+            console.warn("Device motion permission denied");
         }
+    } else {
+        window.addEventListener("deviceorientation", handleOrientation);
+    }
+}
 
-        requestAnimationFrame(render);
+enableMotionSensor();
+
+function handleOrientation(event) {
+    let x = event.beta; // [-180,180]
+    let y = event.gamma; // [-90,90]
+
+    if (x == null || y == null) {
+        gravity[0] = 0;
+        gravity[1] = -1;
+    } else {
+        if (x > 90) x = 90;
+        if (x < -90) x = -90;
+        gravity[0] = y / 90; 
+        gravity[1] = -x / 90;
+    }
+}
+
+// ** 💥 Handle Explosions on Click or Touch **
+canvas.addEventListener("click", (event) => handleExplosion(event.clientX, event.clientY));
+canvas.addEventListener("touchstart", (event) => {
+    event.preventDefault();
+    handleExplosion(event.touches[0].clientX, event.touches[0].clientY);
+});
+
+function handleExplosion(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const clickY = 1 - ((clientY - rect.top) / rect.height) * 2;
+
+    triggerExplosion(clickX, clickY, circles);
+}
+
+function triggerExplosion(x, y, circles) {
+    const explosionStrength = 0.2;
+
+    circles.forEach((circle) => {
+        const dx = circle.x - x;
+        const dy = circle.y - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 0.3) return;
+
+        const force = explosionStrength / Math.max(distance, 0.05);
+        const directionX = dx / distance;
+        const directionY = dy / distance;
+
+        circle.velocityX += directionX * force;
+        circle.velocityY += directionY * force;
+    });
+}
+
+// ** 🎥 Animation Loop **
+const bounds = { left: -1, right: 1, top: 1, bottom: -1 };
+let previousTime = 0;
+
+function render(currentTime) {
+    currentTime *= 0.001;
+    const deltaTime = currentTime - previousTime;
+    previousTime = currentTime;
+
+    gl.clearColor(0.2, 0.2, 0.2, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    for (let i = 0; i < circles.length; i++) {
+        for (let j = i + 1; j < circles.length; j++) {
+            collideParticles(circles[i], circles[j], 0.9);
+        }
+        circles[i].update(deltaTime, gravity);
+        circles[i].draw(gl, shaderProgram, circleBuffer);
     }
 
     requestAnimationFrame(render);
 }
 
+requestAnimationFrame(render);
+
+// ** 🛠 Helper Functions **
 function createCircleVertices(sides) {
     const vertices = [0, 0];
     for (let i = 0; i <= sides; i++) {
@@ -131,26 +197,4 @@ function loadShader(gl, type, source) {
     }
 
     return shader;
-}
-
-function triggerExplosion(x, y, circles) {
-    const explosionStrength = .2; // Strength of the explosion
-
-    circles.forEach((circle) => {
-        const dx = circle.x - x;
-        const dy = circle.y - y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        // Ignore circles too far from the explosion
-        if (distance > 0.3) return;
-
-        // Calculate force and direction
-        const force = explosionStrength / Math.max(distance, 0.05);
-        const directionX = dx / distance;
-        const directionY = dy / distance;
-
-        // Apply force to velocity
-        circle.velocityX += directionX * force;
-        circle.velocityY += directionY * force;
-    });
 }
