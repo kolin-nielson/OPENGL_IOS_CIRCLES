@@ -32,7 +32,7 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // For navigation requests, serve index.html to help prevent a blank screen in iOS PWAs
+  // For navigation requests, serve index.html to prevent a blank screen in iOS PWAs.
   if (e.request.mode === 'navigate') {
     e.respondWith(caches.match('./index.html'));
     return;
