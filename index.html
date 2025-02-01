@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- The viewport meta tag helps with scaling on mobile devices -->
+  <!-- Viewport setup for mobile devices -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Bouncing Circles PWA</title>
   
@@ -35,12 +35,23 @@
       height: 100vh;
       touch-action: none;
     }
+    /* Optional: style for the enable motion button */
+    #enableMotionBtn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      z-index: 100;
+    }
   </style>
 </head>
 <body>
   <canvas id="glcanvas"></canvas>
+  <!-- Button for enabling motion events (required on iOS) -->
+  <button id="enableMotionBtn">Enable Motion</button>
 
-  <!-- Load your main JavaScript as an ES module -->
+  <!-- Load your main JavaScript module -->
   <script type="module" src="app.js"></script>
   <script>
     // Service Worker Registration

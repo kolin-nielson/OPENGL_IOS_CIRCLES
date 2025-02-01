@@ -7,9 +7,10 @@ let gl;
 let shaderProgram;
 let circleBuffer;
 let circleVertices;
+let circleVertexCount;
 let dpr = window.devicePixelRatio || 1;
 
-// Initialize WebGL and create shaders/buffers.
+// Initialize WebGL, shaders, and buffers
 function initWebGL() {
   try {
     gl = canvas.getContext("webgl", { 
@@ -19,14 +20,16 @@ function initWebGL() {
     });
     if (!gl) throw new Error("WebGL not supported");
 
-    // Set up high-DPI: dpr is already used to set the canvas size.
     dpr = window.devicePixelRatio || 1;
     
-    // Create our shader program (note: see updated vertex shader below)
+    // Create our shader program using the updated vertex shader (which uses aspect correction)
     shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
     
-    // Create our circle vertex data and buffer
+    // Create circle geometry (a triangle fan) with 64 sides.
+    // The vertex array contains: 1 center + 64 sides + 1 extra vertex to close the circle = 66 vertices.
     circleVertices = createCircleVertices(64);
+    circleVertexCount = circleVertices.length / 2;
+    
     circleBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circleVertices), gl.STATIC_DRAW);
@@ -38,7 +41,7 @@ function initWebGL() {
   }
 }
 
-// Properly resize the canvas
+// Resize the canvas for high-DPI screens
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
   canvas.width = Math.floor(rect.width * dpr);
@@ -51,13 +54,14 @@ function resizeCanvas() {
   }
 }
 
-// Listen for context loss and restoration.
+// Handle WebGL context loss and restoration
 function handleContextLoss() {
   canvas.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
     console.log("Context lost");
     cancelAnimationFrame(animationFrame);
   });
+
   canvas.addEventListener("webglcontextrestored", () => {
     console.log("Context restored");
     initWebGL();
@@ -71,6 +75,7 @@ let circles = [];
 const numCircles = 50;
 let gravity = [0, -1];
 
+// Create our circles with random properties
 function initScene() {
   circles = [];
   for (let i = 0; i < numCircles; i++) {
@@ -96,16 +101,20 @@ function startAnimation() {
     gl.clearColor(0.2, 0.2, 0.2, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // IMPORTANT: use the shader program before drawing!
+    // Use the shader program
     gl.useProgram(shaderProgram);
 
-    // Update circle physics, resolve collisions, and draw each circle.
+    // Set the aspect ratio uniform (canvas.width and canvas.height are in physical pixels)
+    const aspectUniform = gl.getUniformLocation(shaderProgram, "uAspect");
+    gl.uniform1f(aspectUniform, canvas.width / canvas.height);
+
+    // Update physics, handle collisions, and draw each circle
     for (let i = 0; i < circles.length; i++) {
       for (let j = i + 1; j < circles.length; j++) {
         collideParticles(circles[i], circles[j], 0.9);
       }
       circles[i].update(deltaTime, gravity);
-      circles[i].draw(gl, shaderProgram, circleBuffer);
+      circles[i].draw(gl, shaderProgram, circleBuffer, circleVertexCount);
     }
 
     animationFrame = requestAnimationFrame(render);
@@ -114,9 +123,9 @@ function startAnimation() {
   animationFrame = requestAnimationFrame(render);
 }
 
-// Request motion permission if needed and add the orientation listener.
+// Request motion permission (triggered by a user gesture on iOS)
 async function enableMotion() {
-  if (typeof DeviceMotionEvent !== "undefined" && 
+  if (typeof DeviceMotionEvent !== "undefined" &&
       typeof DeviceMotionEvent.requestPermission === "function") {
     try {
       const permission = await DeviceMotionEvent.requestPermission();
@@ -131,29 +140,37 @@ async function enableMotion() {
   }
 }
 
+// Device orientation event handler
 function handleOrientation(e) {
   let x = e.beta;  // [-180, 180]
   let y = e.gamma; // [-90, 90]
   if (x === null || y === null) return;
-  x = Math.max(-90, Math.min(90, x)); // Clamp
+  x = Math.max(-90, Math.min(90, x));
   gravity[0] = y / 90;
   gravity[1] = -x / 90;
 }
 
-// Initialize everything on window load.
+// Initialization on window load
 window.addEventListener("load", () => {
   if (!initWebGL()) return;
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   handleContextLoss();
   initScene();
-  enableMotion();
   startAnimation();
 });
 
-// --- Shader Utilities ---
+// Attach a click handler to the motion enable button (required on iOS)
+document.getElementById("enableMotionBtn").addEventListener("click", () => {
+  enableMotion();
+  document.getElementById("enableMotionBtn").style.display = 'none';
+});
 
-// Create circle vertices (triangle fan with a center and one extra vertex to complete the circle)
+// --- Shader and Utility Functions ---
+
+// Create circle vertices for a triangle fan. With the given sides,
+// vertices = [center, point0, point1, ... pointN, point0 again] so that
+// the fan is complete.
 function createCircleVertices(sides) {
   const vertices = [0, 0];
   for (let i = 0; i <= sides; i++) {
@@ -170,6 +187,7 @@ function initShaderProgram(gl, vsSource, fsSource) {
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
   gl.linkProgram(program);
+
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     console.error("Shader program failed:", gl.getProgramInfoLog(program));
     return null;
@@ -181,6 +199,7 @@ function loadShader(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
+
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     console.error("Shader compile error:", gl.getShaderInfoLog(shader));
     gl.deleteShader(shader);
@@ -190,15 +209,16 @@ function loadShader(gl, type, source) {
 }
 
 // --- Shader Source Code ---
-// Note: We have removed the uDPR uniform since the canvas is already scaled properly.
-
+// The vertex shader now uses a uAspect uniform to adjust the x coordinate,
+// ensuring that circles are drawn properly even on non-square (stretched) canvases.
 const vertexShaderText = `
   attribute vec2 vertPosition;
   uniform vec2 uTranslation;
   uniform float uScale;
+  uniform float uAspect;
   void main() {
-    vec2 scaledPosition = vertPosition * uScale;
-    gl_Position = vec4(uTranslation + scaledPosition, 0.0, 1.0);
+    vec2 pos = vertPosition * uScale;
+    gl_Position = vec4(uTranslation.x + pos.x / uAspect, uTranslation.y + pos.y, 0.0, 1.0);
   }
 `;
 
