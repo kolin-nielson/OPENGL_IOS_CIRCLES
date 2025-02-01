@@ -14,9 +14,6 @@
     <meta name="apple-mobile-web-app-title" content="Bouncing Circles">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="icons/favicon-32x32.png">
-
     <style>
         * {
             margin: 0;
@@ -44,19 +41,17 @@
 
     <script type="module" src="app.js"></script>
     <script>
-        // Service Worker Registration
+        // Service Worker Registration with scope fix
         if ("serviceWorker" in navigator) {
-            window.addEventListener("load", () => {
-                navigator.serviceWorker.register("service-worker.js")
-                    .then(reg => {
-                        console.log("Service Worker registered");
-                        reg.update(); // Force update
-                    })
-                    .catch(err => console.error("Service Worker registration failed:", err));
-            });
+            navigator.serviceWorker.register("service-worker.js", { scope: "./" })
+                .then(reg => {
+                    console.log("Service Worker registered");
+                    reg.update();
+                })
+                .catch(err => console.error("SW registration failed:", err));
         }
 
-        // Prevent elastic scrolling on iOS
+        // iOS touch prevention
         document.body.addEventListener('touchmove', (e) => {
             e.preventDefault();
         }, { passive: false });

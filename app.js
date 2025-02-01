@@ -6,21 +6,23 @@ let gl;
 let shaderProgram;
 let circleBuffer;
 let circleVertices;
+let dpr = 1;
 
-// WebGL Initialization
+// WebGL Initialization with error handling
 function initWebGL() {
     try {
         gl = canvas.getContext("webgl", { 
             antialias: true,
-            preserveDrawingBuffer: true 
+            preserveDrawingBuffer: true,
+            powerPreference: "high-performance"
         });
         
-        if (!gl) {
-            alert("WebGL not supported");
-            throw new Error("WebGL not supported");
-        }
+        if (!gl) throw new Error("WebGL not supported");
 
-        // Create shaders and buffers
+        // High-DPI setup
+        dpr = window.devicePixelRatio || 1;
+        
+        // Shader setup
         shaderProgram = initShaderProgram(gl, vertexShaderText, fragmentShaderText);
         circleVertices = createCircleVertices(64);
         circleBuffer = gl.createBuffer();
@@ -34,37 +36,38 @@ function initWebGL() {
     }
 }
 
-// Canvas Resizing
+// Proper high-DPI resize handling
 function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     
-    // Set CSS dimensions
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    
-    // Set actual buffer size
+    // Physical pixels
     canvas.width = Math.floor(rect.width * dpr);
     canvas.height = Math.floor(rect.height * dpr);
     
+    // CSS pixels
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
     if (gl) {
         gl.viewport(0, 0, canvas.width, canvas.height);
     }
 }
 
-// Context Handlers
-canvas.addEventListener("webglcontextlost", (e) => {
-    e.preventDefault();
-    console.log("WebGL context lost");
-    cancelAnimationFrame(animationFrame);
-});
+// WebGL context recovery
+function handleContextLoss() {
+    canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault();
+        console.log("Context lost");
+        cancelAnimationFrame(animationFrame);
+    });
 
-canvas.addEventListener("webglcontextrestored", () => {
-    console.log("WebGL context restored");
-    initWebGL();
-    resizeCanvas();
-    startAnimation();
-});
+    canvas.addEventListener("webglcontextrestored", () => {
+        console.log("Context restored");
+        initWebGL();
+        resizeCanvas();
+        startAnimation();
+    });
+}
 
 // Animation Control
 let animationFrame;
@@ -102,7 +105,7 @@ function startAnimation() {
                 collideParticles(circles[i], circles[j], 0.9);
             }
             circles[i].update(deltaTime, gravity);
-            circles[i].draw(gl, shaderProgram, circleBuffer);
+            circles[i].draw(gl, shaderProgram, circleBuffer, dpr);
         }
 
         animationFrame = requestAnimationFrame(render);
@@ -139,37 +142,12 @@ function handleOrientation(e) {
     gravity[1] = -x / 90;
 }
 
-// Touch/Click Handling
-canvas.addEventListener("click", handleInteraction);
-canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    handleInteraction(e.touches[0]);
-});
-
-function handleInteraction(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = 1 - ((e.clientY - rect.top) / rect.height) * 2;
-    
-    // Apply explosion force
-    circles.forEach(circle => {
-        const dx = circle.x - x;
-        const dy = circle.y - y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 0.3) {
-            const force = 0.2 / Math.max(distance, 0.05);
-            circle.velocityX += (dx / distance) * force;
-            circle.velocityY += (dy / distance) * force;
-        }
-    });
-}
-
 // Initialization
 window.addEventListener("load", () => {
     if (!initWebGL()) return;
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
+    handleContextLoss();
     initScene();
     enableMotion();
     startAnimation();
@@ -219,15 +197,18 @@ const vertexShaderText = `
 attribute vec2 vertPosition;
 uniform vec2 uTranslation;
 uniform float uScale;
+uniform float uDPR;
+
 void main() {
-    vec2 position = vertPosition * uScale + uTranslation;
-    gl_Position = vec4(position, 0.0, 1.0);
+    vec2 scaledPosition = vertPosition * uScale * uDPR;
+    gl_Position = vec4(uTranslation + scaledPosition, 0.0, 1.0);
 }
 `;
 
 const fragmentShaderText = `
 precision mediump float;
 uniform vec4 uColor;
+
 void main() {
     gl_FragColor = uColor;
 }

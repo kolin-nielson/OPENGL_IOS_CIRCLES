@@ -33,20 +33,22 @@ export class Circle {
         this.y = Math.max(-1 + this.radius, Math.min(1 - this.radius, this.y));
     }
 
-    draw(gl, shaderProgram, circleBuffer) {
-        const positionAttribLocation = gl.getAttribLocation(shaderProgram, "vertPosition");
-        const colorUniformLocation = gl.getUniformLocation(shaderProgram, "uColor");
-        const translationUniformLocation = gl.getUniformLocation(shaderProgram, "uTranslation");
-        const scaleUniformLocation = gl.getUniformLocation(shaderProgram, "uScale");
+    draw(gl, shaderProgram, circleBuffer, dpr) {
+        const positionAttrib = gl.getAttribLocation(shaderProgram, "vertPosition");
+        const colorUniform = gl.getUniformLocation(shaderProgram, "uColor");
+        const translationUniform = gl.getUniformLocation(shaderProgram, "uTranslation");
+        const scaleUniform = gl.getUniformLocation(shaderProgram, "uScale");
+        const dprUniform = gl.getUniformLocation(shaderProgram, "uDPR");
 
         gl.bindBuffer(gl.ARRAY_BUFFER, circleBuffer);
-        gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(positionAttribLocation);
+        gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(positionAttrib);
 
-        gl.uniform4fv(colorUniformLocation, this.color);
-        gl.uniform2fv(translationUniformLocation, [this.x, this.y]);
-        gl.uniform1f(scaleUniformLocation, this.radius);
+        gl.uniform4fv(colorUniform, this.color);
+        gl.uniform2fv(translationUniform, [this.x, this.y]);
+        gl.uniform1f(scaleUniform, this.radius);
+        gl.uniform1f(dprUniform, dpr);
 
-        gl.drawArrays(gl.TRIANGLE_FAN, 0, 66);
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, 65);
     }
 }

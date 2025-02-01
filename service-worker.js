@@ -1,4 +1,4 @@
-const CACHE_NAME = 'circles-v2';
+const CACHE_NAME = 'circles-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -6,8 +6,7 @@ const ASSETS = [
   './Circle.js',
   './collisions.js',
   './manifest.json',
-  './icons/apple-touch-icon.png',
-  './icons/favicon-32x32.png'
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (e) => {
@@ -21,18 +20,18 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => 
-      Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
-      )
+      Promise.all(keys.map(key => key !== CACHE_NAME && caches.delete(key)))
     )
   );
 });
 
 self.addEventListener('fetch', (e) => {
+  // Fix for iOS PWA blank screen
+  if (e.request.mode === 'navigate') {
+    e.respondWith(caches.match('./index.html'));
+    return;
+  }
   e.respondWith(
-    caches.match(e.request)
-      .then(res => res || fetch(e.request))
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
