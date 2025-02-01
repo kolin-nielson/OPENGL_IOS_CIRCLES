@@ -20,18 +20,24 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => 
-      Promise.all(keys.map(key => key !== CACHE_NAME && caches.delete(key)))
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      )
     )
   );
 });
 
 self.addEventListener('fetch', (e) => {
-  // Fix for iOS PWA blank screen
+  // For navigation requests, serve index.html to help prevent a blank screen in iOS PWAs
   if (e.request.mode === 'navigate') {
     e.respondWith(caches.match('./index.html'));
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request))
+    caches.match(e.request).then(response => response || fetch(e.request))
   );
 });

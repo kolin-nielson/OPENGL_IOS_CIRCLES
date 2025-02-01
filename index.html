@@ -1,60 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bouncing Circles PWA</title>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <!-- The viewport meta tag helps with scaling on mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bouncing Circles PWA</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
 
-    <!-- iOS PWA Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Bouncing Circles">
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- iOS PWA Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bouncing Circles">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background: black;
-        }
-        canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            touch-action: none;
-        }
-    </style>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+  </style>
 </head>
 <body>
-    <canvas id="glcanvas"></canvas>
+  <canvas id="glcanvas"></canvas>
 
-    <script type="module" src="app.js"></script>
-    <script>
-        // Service Worker Registration with scope fix
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("service-worker.js", { scope: "./" })
-                .then(reg => {
-                    console.log("Service Worker registered");
-                    reg.update();
-                })
-                .catch(err => console.error("SW registration failed:", err));
-        }
+  <!-- Load your main JavaScript as an ES module -->
+  <script type="module" src="app.js"></script>
+  <script>
+    // Service Worker Registration
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js", { scope: "./" })
+        .then(reg => {
+          console.log("Service Worker registered");
+          reg.update();
+        })
+        .catch(err => console.error("SW registration failed:", err));
+    }
 
-        // iOS touch prevention
-        document.body.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-        }, { passive: false });
-    </script>
+    // Prevent default touch scrolling (for iOS)
+    document.body.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
 </body>
 </html>
