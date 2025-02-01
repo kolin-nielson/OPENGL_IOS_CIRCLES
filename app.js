@@ -213,3 +213,22 @@ function loadShader(gl, type, source) {
     }
     return shader;
 }
+
+// Shader Source Code
+const vertexShaderText = `
+attribute vec2 vertPosition;
+uniform vec2 uTranslation;
+uniform float uScale;
+void main() {
+    vec2 position = vertPosition * uScale + uTranslation;
+    gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+const fragmentShaderText = `
+precision mediump float;
+uniform vec4 uColor;
+void main() {
+    gl_FragColor = uColor;
+}
+`;

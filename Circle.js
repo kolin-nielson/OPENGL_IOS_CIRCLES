@@ -8,26 +8,29 @@ export class Circle {
         this.color = color;
     }
 
-    update(deltaTime, bounds) {
+    update(deltaTime, gravity) {
         const GRAVITY = -0.5;
         const AIR_FRICTION = 0.99;
 
-        this.velocityY += GRAVITY * deltaTime;
+        this.velocityX += gravity[0] * deltaTime;
+        this.velocityY += gravity[1] * deltaTime;
         this.velocityX *= AIR_FRICTION;
         this.velocityY *= AIR_FRICTION;
 
         this.x += this.velocityX * deltaTime;
         this.y += this.velocityY * deltaTime;
 
-        if (this.x - this.radius < bounds.left || this.x + this.radius > bounds.right) {
+        // Bounce off walls
+        if (this.x - this.radius < -1 || this.x + this.radius > 1) {
             this.velocityX *= -1;
         }
-        if (this.y - this.radius < bounds.bottom || this.y + this.radius > bounds.top) {
+        if (this.y - this.radius < -1 || this.y + this.radius > 1) {
             this.velocityY *= -1;
         }
 
-        this.x = Math.max(bounds.left + this.radius, Math.min(bounds.right - this.radius, this.x));
-        this.y = Math.max(bounds.bottom + this.radius, Math.min(bounds.top - this.radius, this.y));
+        // Clamp position
+        this.x = Math.max(-1 + this.radius, Math.min(1 - this.radius, this.x));
+        this.y = Math.max(-1 + this.radius, Math.min(1 - this.radius, this.y));
     }
 
     draw(gl, shaderProgram, circleBuffer) {
