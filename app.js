@@ -13,7 +13,7 @@ let circleVertexCount;
 let dpr = window.devicePixelRatio || 1;
 
 let circles = [];
-const numCircles = 50;
+const numCircles = 500;
 let gravity = [0, -1];
 let lastCollisionSoundTime = 0;
 
@@ -181,7 +181,7 @@ const fragmentShaderBackground = `
 function initScene() {
   circles = [];
   for (let i = 0; i < numCircles; i++) {
-    const radius = Math.random() * 0.05 + 0.02;
+    const radius = Math.random() * 0.01 + 0.02;
     const x = Math.random() * 2 - 1;
     const y = Math.random() * 2 - 1;
     const velocityX = Math.random() * 0.5 - 0.25;
@@ -199,7 +199,7 @@ canvas.addEventListener("click", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   const y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
-  const radius = Math.random() * 0.05 + 0.02;
+  const radius = Math.random() * 0.01 + 0.02;
   const velocityX = (Math.random() - 0.5) * 0.5;
   const velocityY = (Math.random() - 0.5) * 0.5;
   const color = [Math.random(), Math.random(), Math.random(), 1.0];
@@ -216,7 +216,7 @@ canvas.addEventListener("pointerdown", (e) => {
   for (let circle of circles) {
     const dx = circle.x - x;
     const dy = circle.y - y;
-    if (Math.hypot(dx, dy) < circle.radius * 0.7) {
+    if (Math.hypot(dx, dy) < circle.radius) {
       draggedCircle = circle;
       break;
     }
